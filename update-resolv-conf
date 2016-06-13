@@ -1,0 +1,59 @@
+#!/bin/sh
+RESOLV_CONF=/etc/resolv.conf
+
+check_ip() {
+    regex="\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+    echo $1 | egrep -q $regex
+    return $?
+}
+
+exit_error() {
+    echo $1
+    exit $2
+}
+
+print_usage() {
+    echo "Script to add DNS ips to resolv.conf"
+    echo "Usage: $0 [-dh] DNS_IP1 DNS_IP2 ..."
+    echo "Use flag -d to delete listed DNS ips from resolv.conf"
+}
+
+
+add_ns() {
+    first_ns_line=`grep 'nameserver' $RESOLV_CONF | head -1`
+    ns_string="nameserver $1 #added by update-resolv-conf"
+
+    grep -q "$ns_string" $RESOLV_CONF && return 0
+
+    if [ -z "$first_ns_line" ]; then
+        echo $ns_string >> $RESOLV_CONF_
+    else
+        /bin/sed -i "/${first_ns_line}/i ${ns_string}" $RESOLV_CONF
+    fi
+}
+
+del_ns() {
+    ns_string="nameserver $1 #added by update-resolv-conf"
+    /bin/sed -i "/${ns_string}/d" $RESOLV_CONF
+}
+
+if [ -z "$1" -o "$1" == '-h' ]; then
+    print_usage
+    exit 0
+fi;
+
+if [ $1 == '-d' ]; then
+    # Delete from 
+    shift
+    check_ip $1 || exit_error "Error! Incorrect IP in params: $IP" 101
+    while check_ip $1 ; do
+        del_ns $1
+        shift
+    done
+else
+    check_ip $1 || exit_error "Error! Incorrect IP in params: $IP" 101
+    while check_ip $1 ; do
+        add_ns $1
+        shift
+    done
+fi;
